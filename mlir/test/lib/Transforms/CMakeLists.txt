@@ -2,6 +2,7 @@
 add_mlir_library(MLIRTestTransforms
   TestConstantFold.cpp
   TestInlining.cpp
+  TestJoinMeetTypeInterface.cpp
   TestLoopFusion.cpp
   TestLoopMapping.cpp
   TestLoopParametricTiling.cpp

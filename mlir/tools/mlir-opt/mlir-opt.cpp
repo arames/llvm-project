@@ -76,6 +76,7 @@ void registerTestComposeSubView();
 void registerTestGpuParallelLoopMappingPass();
 void registerTestIRVisitorsPass();
 void registerTestInterfaces();
+void registerTestJoinMeetTypeInterface();
 void registerTestLinalgCodegenStrategy();
 void registerTestLinalgElementwiseFusion();
 void registerTestPushExpandingReshape();
@@ -155,6 +156,7 @@ void registerTestPasses() {
   test::registerTestGpuParallelLoopMappingPass();
   test::registerTestIRVisitorsPass();
   test::registerTestInterfaces();
+  test::registerTestJoinMeetTypeInterface();
   test::registerTestLinalgCodegenStrategy();
   test::registerTestLinalgElementwiseFusion();
   test::registerTestPushExpandingReshape();

@@ -11,6 +11,7 @@
 
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/Types.h"
+#include "mlir/Interfaces/JoinMeetTypeInterface.h"
 
 namespace llvm {
 struct fltSemantics;
