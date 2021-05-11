@@ -304,7 +304,7 @@ hashValueMapping(const RegisterBankInfo::PartialMapping *BreakDown,
                  unsigned NumBreakDowns) {
   if (LLVM_LIKELY(NumBreakDowns == 1))
     return hash_value(*BreakDown);
-  SmallVector<size_t, 8> Hashes(NumBreakDowns);
+  SmallVector<uint64_t, 8> Hashes(NumBreakDowns);
   for (unsigned Idx = 0; Idx != NumBreakDowns; ++Idx)
     Hashes.push_back(hash_value(BreakDown[Idx]));
   return hash_combine_range(Hashes.begin(), Hashes.end());

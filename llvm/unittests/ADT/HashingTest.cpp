@@ -22,7 +22,7 @@ namespace llvm {
 
 // Helper for test code to print hash codes.
 void PrintTo(const hash_code &code, std::ostream *os) {
-  *os << static_cast<size_t>(code);
+  *os << static_cast<uint64_t>(code);
 }
 
 // Fake an object that is recognized as hashable data to test super large
@@ -134,7 +134,7 @@ template <typename T, size_t N> T *end(T (&arr)[N]) { return arr + N; }
 
 // Provide a dummy, hashable type designed for easy verification: its hash is
 // the same as its value.
-struct HashableDummy { size_t value; };
+struct HashableDummy { uint64_t value; };
 hash_code hash_value(HashableDummy dummy) { return dummy.value; }
 
 TEST(HashingTest, HashCombineRangeBasicTest) {
@@ -172,7 +172,7 @@ TEST(HashingTest, HashCombineRangeBasicTest) {
   EXPECT_NE(dummy_hash, arr4_hash);
   EXPECT_NE(arr1_hash, arr4_hash);
 
-  const size_t arr5[] = { 1, 2, 3 };
+  const uint64_t arr5[] = { 1, 2, 3 };
   const HashableDummy d_arr5[] = { {1}, {2}, {3} };
   hash_code arr5_hash = hash_combine_range(begin(arr5), end(arr5));
   hash_code d_arr5_hash = hash_combine_range(begin(d_arr5), end(d_arr5));
@@ -182,11 +182,11 @@ TEST(HashingTest, HashCombineRangeBasicTest) {
 TEST(HashingTest, HashCombineRangeLengthDiff) {
   // Test that as only the length varies, we compute different hash codes for
   // sequences.
-  std::map<size_t, size_t> code_to_size;
+  std::map<uint64_t, size_t> code_to_size;
   std::vector<char> all_one_c(256, '\xff');
   for (unsigned Idx = 1, Size = all_one_c.size(); Idx < Size; ++Idx) {
     hash_code code = hash_combine_range(&all_one_c[0], &all_one_c[0] + Idx);
-    std::map<size_t, size_t>::iterator
+    std::map<uint64_t, size_t>::iterator
       I = code_to_size.insert(std::make_pair(code, Idx)).first;
     EXPECT_EQ(Idx, I->second);
   }
@@ -194,7 +194,7 @@ TEST(HashingTest, HashCombineRangeLengthDiff) {
   std::vector<char> all_zero_c(256, '\0');
   for (unsigned Idx = 1, Size = all_zero_c.size(); Idx < Size; ++Idx) {
     hash_code code = hash_combine_range(&all_zero_c[0], &all_zero_c[0] + Idx);
-    std::map<size_t, size_t>::iterator
+    std::map<uint64_t, size_t>::iterator
       I = code_to_size.insert(std::make_pair(code, Idx)).first;
     EXPECT_EQ(Idx, I->second);
   }
@@ -202,7 +202,7 @@ TEST(HashingTest, HashCombineRangeLengthDiff) {
   std::vector<unsigned> all_one_int(512, -1);
   for (unsigned Idx = 1, Size = all_one_int.size(); Idx < Size; ++Idx) {
     hash_code code = hash_combine_range(&all_one_int[0], &all_one_int[0] + Idx);
-    std::map<size_t, size_t>::iterator
+    std::map<uint64_t, size_t>::iterator
       I = code_to_size.insert(std::make_pair(code, Idx)).first;
     EXPECT_EQ(Idx, I->second);
   }
@@ -210,7 +210,7 @@ TEST(HashingTest, HashCombineRangeLengthDiff) {
   std::vector<unsigned> all_zero_int(512, 0);
   for (unsigned Idx = 1, Size = all_zero_int.size(); Idx < Size; ++Idx) {
     hash_code code = hash_combine_range(&all_zero_int[0], &all_zero_int[0] + Idx);
-    std::map<size_t, size_t>::iterator
+    std::map<uint64_t, size_t>::iterator
       I = code_to_size.insert(std::make_pair(code, Idx)).first;
     EXPECT_EQ(Idx, I->second);
   }
@@ -283,8 +283,7 @@ TEST(HashingTest, HashCombineRangeGoldenTest) {
     fprintf(stderr, " { %-35s 0x%016llxULL },\n",
             member_str.c_str(), static_cast<uint64_t>(hash));
 #endif
-    EXPECT_EQ(static_cast<size_t>(golden_data[i].hash),
-              static_cast<size_t>(hash));
+    EXPECT_EQ(golden_data[i].hash, static_cast<uint64_t>(hash));
   }
 }
 
@@ -304,9 +303,9 @@ TEST(HashingTest, HashCombineBasicTest) {
   // Hashing a sequence of heterogeneous types which *happen* to all produce the
   // same data for hashing produces the same as a range-based hash of the
   // fundamental values.
-  const size_t s1 = 1024, s2 = 8888, s3 = 9000000;
+  const uint64_t s1 = 1024, s2 = 8888, s3 = 9000000;
   const HashableDummy d1 = { 1024 }, d2 = { 8888 }, d3 = { 9000000 };
-  const size_t arr2[] = { s1, s2, s3 };
+  const uint64_t arr2[] = { s1, s2, s3 };
   EXPECT_EQ(hash_combine_range(begin(arr2), end(arr2)),
             hash_combine(s1, s2, s3));
   EXPECT_EQ(hash_combine(s1, s2, s3), hash_combine(s1, s2, d3));

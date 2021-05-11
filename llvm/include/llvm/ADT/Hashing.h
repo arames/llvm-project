@@ -70,7 +70,7 @@ namespace llvm {
 ///   llvm::hash_code code = hash_value(x);
 /// \endcode
 class hash_code {
-  size_t value;
+  uint64_t value;
 
 public:
   /// Default construct a hash_code.
@@ -78,10 +78,10 @@ public:
   hash_code() = default;
 
   /// Form a hash code directly from a numerical value.
-  hash_code(size_t value) : value(value) {}
+  hash_code(uint64_t value) : value(value) {}
 
   /// Convert the hash code to its numerical value for use.
-  /*explicit*/ operator size_t() const { return value; }
+  /*explicit*/ operator uint64_t() const { return value; }
 
   friend bool operator==(const hash_code &lhs, const hash_code &rhs) {
     return lhs.value == rhs.value;
@@ -91,7 +91,7 @@ public:
   }
 
   /// Allow a hash_code to be directly run through hash_value.
-  friend size_t hash_value(const hash_code &code) { return code.value; }
+  friend uint64_t hash_value(const hash_code &code) { return code.value; }
 };
 
 /// Compute a hash_code for any integer value.
@@ -372,7 +372,7 @@ get_hashable_data(const T &value) {
 /// This variant is enabled when we must first call hash_value and use the
 /// result as our data.
 template <typename T>
-std::enable_if_t<!is_hashable_data<T>::value, size_t>
+std::enable_if_t<!is_hashable_data<T>::value, uint64_t>
 get_hashable_data(const T &value) {
   using ::llvm::hash_value;
   return hash_value(value);

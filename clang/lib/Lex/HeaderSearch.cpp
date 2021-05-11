@@ -223,7 +223,7 @@ std::string HeaderSearch::getCachedModuleFileNameImpl(StringRef ModuleName,
       llvm::hash_combine(DirName.lower(), FileName.lower());
 
     SmallString<128> HashStr;
-    llvm::APInt(64, size_t(Hash)).toStringUnsigned(HashStr, /*Radix*/36);
+    llvm::APInt(64, uint64_t(Hash)).toStringUnsigned(HashStr, /*Radix*/36);
     llvm::sys::path::append(Result, ModuleName + "-" + HashStr + ".pcm");
   }
   return Result.str().str();

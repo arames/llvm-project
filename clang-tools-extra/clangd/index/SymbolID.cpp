@@ -48,10 +48,10 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const SymbolID &ID) {
 
 llvm::hash_code hash_value(const SymbolID &ID) {
   // We already have a good hash, just return the first bytes.
-  static_assert(sizeof(size_t) <= SymbolID::RawSize,
-                "size_t longer than SHA1!");
-  size_t Result;
-  memcpy(&Result, ID.raw().data(), sizeof(size_t));
+  static_assert(sizeof(uint64_t) <= SymbolID::RawSize,
+                "uint64_t longer than SHA1!");
+  uint64_t Result;
+  memcpy(&Result, ID.raw().data(), sizeof(uint64_t));
   return llvm::hash_code(Result);
 }
 

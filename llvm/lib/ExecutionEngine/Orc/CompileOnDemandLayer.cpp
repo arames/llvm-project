@@ -345,10 +345,8 @@ void CompileOnDemandLayer::emitPartition(
             HC = hash_combine(HC, hash_combine_range(GVName.begin(), GVName.end()));
           }
           raw_string_ostream(SubModuleName)
-            << ".submodule."
-            << formatv(sizeof(size_t) == 8 ? "{0:x16}" : "{0:x8}",
-                       static_cast<size_t>(HC))
-            << ".ll";
+              << ".submodule." << formatv("{0:x16}", static_cast<uint64_t>(HC))
+              << ".ll";
         }
 
         // Extract the requested partiton (plus any necessary aliases) and
