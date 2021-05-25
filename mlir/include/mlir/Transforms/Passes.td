@@ -737,6 +737,14 @@ def SymbolDCE : Pass<"symbol-dce"> {
   let constructor = "mlir::createSymbolDCEPass()";
 }
 
+def TypeInferencePass : Pass<"infer-types"> {
+  let summary = "Infer types of operations";
+  let description = [{
+    TODO
+  }];
+  let constructor = "mlir::createTypeInferencePass()";
+}
+
 def ViewOpGraphPass : Pass<"view-op-graph", "ModuleOp"> {
   let summary = "Print graphviz view of module";
   let description = [{

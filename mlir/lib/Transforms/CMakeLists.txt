@@ -21,6 +21,7 @@ add_mlir_library(MLIRTransforms
   SCCP.cpp
   StripDebugInfo.cpp
   SymbolDCE.cpp
+  TypeInference.cpp
   ViewOpGraph.cpp
   ViewRegionGraph.cpp
 

@@ -136,6 +136,9 @@ std::unique_ptr<Pass> createSymbolDCEPass();
 /// (identity) layout map.
 std::unique_ptr<OperationPass<ModuleOp>> createNormalizeMemRefsPass();
 
+/// Creates a pass to infer operation types.
+std::unique_ptr<Pass> createTypeInferencePass();
+
 //===----------------------------------------------------------------------===//
 // Registration
 //===----------------------------------------------------------------------===//
