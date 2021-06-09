@@ -12,6 +12,7 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/iterator_range.h"
 #include "llvm/Support/Compiler.h"
+#include "llvm/Support/HashBuilder.h"
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
@@ -925,6 +926,12 @@ namespace llvm {
   /// Compute a hash_code for a StringRef.
   LLVM_NODISCARD
   hash_code hash_value(StringRef S);
+
+  /// Compute a hash_code for a StringRef.
+  template <typename HasherT>
+  void updateHash(HashBuilder<HasherT> &HBuilder, StringRef S) {
+    HBuilder.updateRange(S.begin(), S.end());
+  }
 
   // Provide DenseMapInfo for StringRefs.
   template <> struct DenseMapInfo<StringRef> {

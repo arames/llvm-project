@@ -16,7 +16,7 @@
 #define LLVM_SUPPORT_HASHBUILDER_H
 
 #include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/StringRef.h"
+//#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/type_traits.h"
 
 #include <string>
@@ -173,10 +173,10 @@ public:
   /// builder.update("ab");
   /// builder.update("c");
   /// ```
-  void update(StringRef Value) {
-    update(llvm::ArrayRef<uint8_t>(
-        reinterpret_cast<const uint8_t *>(Value.data()), Value.size()));
-  }
+  //void update(StringRef Value) {
+  //  update(llvm::ArrayRef<uint8_t>(
+  //      reinterpret_cast<const uint8_t *>(Value.data()), Value.size()));
+  //}
 
   template <typename T> void update(const std::basic_string<T> &Value) {
     return updateRange(Value.begin(), Value.end());
