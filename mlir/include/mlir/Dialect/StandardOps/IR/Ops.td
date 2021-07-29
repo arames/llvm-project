@@ -19,6 +19,7 @@ include "mlir/IR/SymbolInterfaces.td"
 include "mlir/Interfaces/CallInterfaces.td"
 include "mlir/Interfaces/CastInterfaces.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
+include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/Interfaces/VectorInterfaces.td"
 
@@ -864,12 +865,6 @@ def RankOp : Std_Op<"rank", [NoSideEffect]> {
   let results = (outs Index);
   let verifier = ?;
 
-  let builders = [
-    OpBuilder<(ins "Value":$tensor), [{
-      auto indexType = $_builder.getIndexType();
-      build($_builder, $_state, indexType, tensor);
-    }]>];
-
   let hasFolder = 1;
   let assemblyFormat = "$memrefOrTensor attr-dict `:` type($memrefOrTensor)";
 }
@@ -951,13 +946,6 @@ def SelectOp : Std_Op<"select", [NoSideEffect,
                        AnyType:$true_value,
                        AnyType:$false_value);
   let results = (outs AnyType:$result);
-
-  let builders = [
-    OpBuilder<(ins "Value":$condition, "Value":$trueValue,
-      "Value":$falseValue), [{
-      $_state.addOperands({condition, trueValue, falseValue});
-      $_state.addTypes(trueValue.getType());
-    }]>];
 
   let hasCanonicalizer = 1;
   let hasFolder = 1;
@@ -1097,5 +1085,92 @@ def SwitchOp : Std_Op<"switch",
 
   let hasCanonicalizer = 1;
 }
+
+//===----------------------------------------------------------------------===//
+// RelaxTypeOp
+//===----------------------------------------------------------------------===//
+
+// FIXME: Have `SameOperandsAndResultType` and other similar traits provide a
+// default implementation of `InferTypeOpInterface`, and use it here.
+def RelaxTypeOp
+    : Std_Op<"relax_type",
+             [NoSideEffect,
+              DeclareOpInterfaceMethods<AllowsInputTypesSpecializationInterface>,
+              DeclareOpInterfaceMethods<AllowsOutputTypesSpecializationInterface>,
+              DeclareOpInterfaceMethods<InferTypeOpInterface, ["inferReturnTypes"]>]> {
+  let summary = "relax the value type";
+  let description = [{
+    Relax the type of the input value. The "content" of the value itself is
+    unchanged. Only the type is modified.
+
+    It is typically introduced by the type inference pass to satisfy type
+    constraints, when a less specialized type is required.
+
+    Example:
+    ```
+    // The hypothetical `process` op implements `SameOperandsAndResultType` and
+    // allows output type specialization.
+    %val = "process"(%x, %y) : (tensor<1x?xi32>, tensor<?x2xi32>) -> tensor<1x2xi32>
+    %relaxed_value = relax_type %value : tensor<1x2xi32> to tensor<*xi32>
+    "op_disallowing_input_type_specialization"(%relaxed_value) : (tensor<*xi32>) -> ()
+    ```
+  }];
+
+  let arguments = (ins AnyType:$in);
+  let results = (outs AnyType:$out);
+
+  let builders = [
+    OpBuilder<(ins "Value":$source, "Type":$destType), [{
+       impl::buildCastOp($_builder, $_state, source, destType);
+    }]>
+  ];
+
+  let extraClassDeclaration = [{
+    static bool isCompatibleReturnTypes(TypeRange lhs, TypeRange rhs);
+    bool allowsOutputTypeSpecialization(unsigned operandIndex) { return false; }
+  }];
+
+  let assemblyFormat = "$in attr-dict `:` type($in) `to` type($out)";
+
+  let hasFolder = 1;
+}
+
+//===----------------------------------------------------------------------===//
+// TypeSpecializationOp
+//===----------------------------------------------------------------------===//
+
+def SpecializeTypeOp : Std_Op<"specialize_type", [NoSideEffect]> {
+  let summary = "specialize the value type";
+  let description = [{
+    Specialize the type of the input value. The "content" of the value itself is
+    unchanged. Only the type is modified.
+
+    It is typically introduced by the type inference pass to satisfy type
+    constraints, when a more specialized type is required.
+
+    Example:
+    ```
+    // The hypothetical `process` op implements `SameOperandsAndResultType` but
+    // disallows output type specialization.
+    %val = "process"(%x, %y) : (tensor<1x?xi32>, tensor<?x2xi32>) -> tensor<*xi32>
+    %specialized_val = specialize_type %val : tensor<*xi32> to tensor<1x2xi32>
+    "op_allowing_input_type_specialization"(%specialized_val) : (tensor<1x2xi32>) -> ()
+    ```
+  }];
+
+  let arguments = (ins AnyType:$in);
+  let results = (outs AnyType:$out);
+
+  let builders = [
+    OpBuilder<(ins "Value":$source, "Type":$destType), [{
+       impl::buildCastOp($_builder, $_state, source, destType);
+    }]>
+  ];
+
+  let assemblyFormat = "$in attr-dict `:` type($in) `to` type($out)";
+
+  let hasFolder = 1;
+}
+
 
 #endif // STANDARD_OPS

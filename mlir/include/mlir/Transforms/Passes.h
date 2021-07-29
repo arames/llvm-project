@@ -16,6 +16,7 @@
 
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/LocationSnapshot.h"
+#include "mlir/Transforms/TypeInferenceUtils.h"
 #include "mlir/Transforms/ViewOpGraph.h"
 #include "llvm/Support/Debug.h"
 #include <limits>
@@ -136,6 +137,10 @@ std::unique_ptr<Pass> createSymbolDCEPass();
 /// Creates an interprocedural pass to normalize memrefs to have a trivial
 /// (identity) layout map.
 std::unique_ptr<OperationPass<ModuleOp>> createNormalizeMemRefsPass();
+
+/// Creates a pass to infer operation types.
+std::unique_ptr<Pass> createTypeInferencePass(
+    TypeInferenceTypeAdapter typeAdapter = defaultTypeInferenceAdapter);
 
 //===----------------------------------------------------------------------===//
 // Registration

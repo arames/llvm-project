@@ -137,7 +137,7 @@ func @func_with_ops(i32, i32, i32) {
 
 func @func_with_ops(i1, i32, i64) {
 ^bb0(%cond : i1, %t : i32, %f : i64):
-  // expected-error@+1 {{all of {true_value, false_value, result} have same type}}
+  // expected-error@+1 {{'std.select' op inferred type(s) 'i64' are incompatible with return type(s) of operation 'i32'}}
   %r = "std.select"(%cond, %t, %f) : (i1, i32, i64) -> i32
 }
 

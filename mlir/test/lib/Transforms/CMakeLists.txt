@@ -7,6 +7,7 @@ add_mlir_library(MLIRTestTransforms
   TestLoopMapping.cpp
   TestLoopParametricTiling.cpp
   TestLoopUnrolling.cpp
+  TestTypeInferenceAdapter.cpp
 
   EXCLUDE_FROM_LIBMLIR
 

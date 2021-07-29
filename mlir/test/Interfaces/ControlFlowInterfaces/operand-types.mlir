@@ -37,7 +37,7 @@ func @succ_type_fixed_to_dynamic() {
   return
 
 ^bb2:
-  "test.cfe.br"(%0)[^bb3] : (tensor<1xi32>) -> ()
+  "test.ti.br"(%0)[^bb3] : (tensor<1xi32>) -> ()
 ^bb3(%arg2: tensor<?xi32>):
   return
 }
@@ -47,7 +47,7 @@ func @succ_type_fixed_to_dynamic() {
 func @succ_type_dynamic_to_fixed() {
 ^bb0:
   %0 = "getValue"() : () -> tensor<?xi32>
-  "test.cfe.br"(%0)[^bb1] : (tensor<?xi32>) -> ()
+  "test.ti.br"(%0)[^bb1] : (tensor<?xi32>) -> ()
   // expected-error@-1 {{type mismatch for bb argument #0 of successor #0}}
 ^bb1(%arg3: tensor<1xi32>):
   return
@@ -95,17 +95,17 @@ func @succ_type_fixed_to_dynamic() {
       test.region_if_yield %arg1 : memref<?xi32>
   }
 
-  %tmp2 = test.cfe.region_if %0 : memref<1xi32> -> (memref<?xi32>) then {
+  %tmp2 = test.ti.region_if %0 : memref<1xi32> -> (memref<?xi32>) then {
     ^bb0(%arg1 : memref<1xi32>):
       %true_value = "getValue"(%arg1) : (memref<1xi32>) -> (memref<2xi32>)
-      test.cfe.region_if_yield %true_value : memref<2xi32>
+      test.ti.region_if_yield %true_value : memref<2xi32>
   } else {
     ^bb0(%arg1 : memref<?xi32>):
       %false_value = "getValue"(%arg1) : (memref<?xi32>) -> (memref<3xi32>)
-      test.cfe.region_if_yield %false_value : memref<3xi32>
+      test.ti.region_if_yield %false_value : memref<3xi32>
   } join {
     ^bb0(%arg1 : memref<?xi32>):
-      test.cfe.region_if_yield %arg1 : memref<?xi32>
+      test.ti.region_if_yield %arg1 : memref<?xi32>
   }
 
   return

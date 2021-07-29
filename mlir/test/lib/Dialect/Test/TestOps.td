@@ -161,8 +161,8 @@ def MixedNormalVariadicOperandOp : TEST_Op<
 def VariadicWithSameOperandsResult :
       TEST_Op<"variadic_with_same_operand_results",
               [SameOperandsAndResultType]> {
-  let arguments = (ins Variadic<AnySignlessInteger>);
-  let results = (outs AnySignlessInteger:$result);
+  let arguments = (ins Variadic<AnyTensor>:$operands);
+  let results = (outs AnyTensor:$result);
 }
 
 def SameOperandsResultType : TEST_Op<
@@ -2362,30 +2362,79 @@ def : Pat<(TestDefaultStrAttrNoValueOp $value),
           (TestDefaultStrAttrHasValueOp ConstantStrAttr<StrAttr, "foo">)>;
 
 //===----------------------------------------------------------------------===//
-// Test Control-Flow Edge Operand Types
+// Test Type Inferences
 //===----------------------------------------------------------------------===//
 
-def CFEBranchOp : TEST_Op<"cfe.br",
-    [DeclareOpInterfaceMethods<BranchOpInterface,
+def TIDisallowInputTypeSpecializationOp
+    : TEST_Op<"ti.disallow_input_type_specialization"> {
+  let description = [{Disallow type specialization for all operands.}];
+  let arguments = (ins Variadic<AnyType>:$inputs);
+}
+
+def TIAllowInputTypeSpecializationOp
+    : TEST_Op<"ti.allow_input_type_specialization",
+              [DeclareOpInterfaceMethods<AllowsInputTypesSpecializationInterface>]> {
+  let description = [{Allow type specialization for all operands.}];
+  let arguments = (ins Variadic<AnyType>:$inputs);
+}
+
+def TIConditionallyAllowInputTypeSpecializationOp
+    : TEST_Op<"ti.conditionally_allow_input_type_specialization",
+              [DeclareOpInterfaceMethods<AllowsInputTypesSpecializationInterface>]> {
+  let description = [{Allow type specialization for evenly-indexed operands.}];
+  let arguments = (ins Variadic<AnyType>:$inputs);
+  let extraClassDeclaration = [{
+    bool allowsInputTypeSpecialization(unsigned operandIndex) {
+      return operandIndex % 2 == 0;
+    }
+  }];
+}
+
+def TIJoinTypesOp
+    : TEST_Op<"ti.join_types",
+              [DeclareOpInterfaceMethods<InferTypeOpInterface>,
+               DeclareOpInterfaceMethods<AllowsOutputTypesSpecializationInterface>]> {
+  let description = [{
+    Type inference joins the operand types.
+    Output type specialization is configurable via a boolean attribute.
+  }];
+  let arguments = (ins Variadic<AnyType>:$inputs,
+                       DefaultValuedAttr<BoolAttr, "true">:$allowOutputTypeSpecialization);
+  let results = (outs AnyType:$result);
+  let extraClassDeclaration = [{
+    static bool isCompatibleReturnTypes(::mlir::TypeRange lhs, ::mlir::TypeRange rhs);
+    bool allowsOutputTypeSpecialization(unsigned outputIndex) {
+      return this->getAllowOutputTypeSpecialization();
+    }
+  }];
+}
+
+def TIBranchOp : TEST_Op<"ti.br",
+    [DeclareOpInterfaceMethods<AllowsInputTypesSpecializationInterface>,
+     DeclareOpInterfaceMethods<BranchOpInterface,
                                ["areCompatibleControlFlowEdgeOperandTypes"]>,
      Terminator]> {
+  let description = [{Branch allowing type specialization for all operands.}];
   let arguments = (ins Variadic<AnyType>:$targetOperands);
   let successors = (successor AnySuccessor:$target);
 }
 
-def CFERegionIfYieldOp : TEST_Op<"cfe.region_if_yield",
-      [NoSideEffect, ReturnLike, Terminator]> {
+def TIRegionIfYieldOp : TEST_Op<"ti.region_if_yield",
+      [DeclareOpInterfaceMethods<AllowsInputTypesSpecializationInterface>,
+       NoSideEffect, ReturnLike, Terminator]> {
   let arguments = (ins Variadic<AnyType>:$results);
   let assemblyFormat = [{
     $results `:` type($results) attr-dict
   }];
 }
 
-def CFERegionIfOp
-    : TEST_Op<"cfe.region_if",
-      [DeclareOpInterfaceMethods<RegionBranchOpInterface,
+def TIRegionIfOp
+    : TEST_Op<"ti.region_if",
+      [DeclareOpInterfaceMethods<AllowsInputTypesSpecializationInterface>,
+       DeclareOpInterfaceMethods<AllowsOutputTypesSpecializationInterface>,
+       DeclareOpInterfaceMethods<RegionBranchOpInterface,
                                  ["areCompatibleControlFlowEdgeOperandTypes"]>,
-       SingleBlockImplicitTerminator<"CFERegionIfYieldOp">,
+       SingleBlockImplicitTerminator<"TIRegionIfYieldOp">,
        RecursiveSideEffects]> {
   let description =[{
     Represents an abstract if-then-else-join pattern. In this context, the then
@@ -2414,6 +2463,22 @@ def CFERegionIfOp
   }];
 
   let verifier = [{ return RegionBranchOpInterface::verifyTypes(*this); }];
+}
+
+def TIDynamicizeOp
+    : TEST_Op<"ti.dynamicize",
+      [DeclareOpInterfaceMethods<AllowsInputTypesSpecializationInterface>,
+       DeclareOpInterfaceMethods<AllowsOutputTypesSpecializationInterface>,
+       DeclareOpInterfaceMethods<InferTypeOpInterface, ["inferReturnTypes"]>]> {
+  let description = [{
+    An op with particularly weird type inference, that progressively sets each
+    dimension to dynamic (`?`).
+  }];
+  let arguments = (ins AnyTensor);
+  let results = (outs AnyTensor);
+  let extraClassDeclaration = [{
+    static bool isCompatibleReturnTypes(::mlir::TypeRange lhs, ::mlir::TypeRange rhs);
+  }];
 }
 
 #endif // TEST_OPS

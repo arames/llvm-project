@@ -692,6 +692,113 @@ def SymbolDCE : Pass<"symbol-dce"> {
   let constructor = "mlir::createSymbolDCEPass()";
 }
 
+def TypeInferencePass : Pass<"infer-types"> {
+  let summary = "Infer the types of values";
+  let description = [{
+    This pass propagates type information through the IR to refine value types.
+
+    The operation interface `InferTypeOpInterface` allows expressing
+    per-operation type inference logic.
+
+    Support for input types specialization is controlled by
+    `AllowsInputTypesSpecializationInterface`.
+
+    Support for input types specialization is controlled by
+    `AllowsInputTypesSpecializationInterface` and `InferTypeOpInterface`.
+    If `AllowsOutputTypesSpecializationInterface` is implemented, it explicitly
+    specifies what output types specialization is allowed.
+    If `AllowsOutputTypesSpecializationInterface` is not implemented, output
+    types specialization is allowed if `InferTypeOpInterface` is implemented.
+
+    To satisfy type constraints, the type inference pass may need to explicitly
+    relax or specialize a type when it cannot be done in place.
+    By default, the pass will insert `relax_type` and `specialize_type` ops as
+    appropriate. This can be overriden by registering a custom type adapter in
+    the constructor of the pass.
+    An example custom adapter would be:
+    ```
+    Value customTypeAdapter(Value value, Type type) {
+      if (type.isa<CustomType>()) {
+        OpBuilder builder(value.getContext());
+        builder.setInsertionPointAfterValue(value);
+        return builder.createOrFold<CustomCastOp>(value.getLoc(), value, type);
+      }
+      return defaultTypeInferenceAdapter(value, type);
+    }
+
+    ...
+
+    auto TI = createTypeInferencePass(customTypeAdapter);
+    ```
+
+    For example, running type inference on the input
+
+    ```
+    func @test_input_specialization(%x : tensor<1x?xi32>, %y : tensor<?x2xi32>) {
+      %tmp = "test.ti.join_types"(%x, %y) : (tensor<1x?xi32>, tensor<?x2xi32>) -> tensor<*xi32>
+      "test.ti.disallow_input_type_specialization"(%tmp) : (tensor<*xi32>) -> ()
+      "test.ti.allow_input_type_specialization"(%tmp) : (tensor<*xi32>) -> ()
+      "test.ti.conditionally_allow_input_type_specialization"(%tmp, %tmp) : (tensor<*xi32>, tensor<*xi32>) -> ()
+      return
+    }
+    ```
+
+    will output
+
+    ```
+    func @test_input_specialization(%arg0: tensor<1x?xi32>, %arg1: tensor<?x2xi32>) {
+      %0 = "test.ti.join_types"(%arg0, %arg1) : (tensor<1x?xi32>, tensor<?x2xi32>) -> tensor<?x?xi32>
+      %1 = relax_type %0 : tensor<?x?xi32> to tensor<*xi32>
+      "test.ti.disallow_input_type_specialization"(%1) : (tensor<*xi32>) -> ()
+      "test.ti.allow_input_type_specialization"(%0) : (tensor<?x?xi32>) -> ()
+      "test.ti.conditionally_allow_input_type_specialization"(%0, %1) : (tensor<?x?xi32>, tensor<*xi32>) -> ()
+      return
+    }
+    ```
+    .
+
+    And running on the input
+
+    ```
+    func @test_branch_join(%cond: i1, %x : tensor<1xi32>, %y : tensor<2xi32>) {
+      cond_br %cond, ^bb1, ^bb2
+    ^bb1:
+      %val_true = "test.ti.join_types"(%x) : (tensor<1xi32>) -> tensor<*xi32>
+      br ^bb3(%val_true : tensor<*xi32>)
+    ^bb2:
+      %val_false = "test.ti.join_types"(%y) : (tensor<2xi32>) -> tensor<*xi32>
+      br ^bb3(%val_false : tensor<*xi32>)
+    ^bb3(%val: tensor<*xi32>):
+      "test.ti.allow_input_type_specialization"(%val) : (tensor<*xi32>) -> ()
+      "test.ti.disallow_input_type_specialization"(%val) : (tensor<*xi32>) -> ()
+      return
+    }
+    ```
+
+    will output
+
+    ```
+    func @test_branch_join(%arg0: i1, %arg1: tensor<1xi32>, %arg2: tensor<2xi32>) {
+      cond_br %arg0, ^bb1, ^bb2
+    ^bb1:  // pred: ^bb0
+      %0 = "test.ti.join_types"(%arg1) : (tensor<1xi32>) -> tensor<1xi32>
+      %1 = relax_type %0 : tensor<1xi32> to tensor<*xi32>
+      br ^bb3(%1 : tensor<*xi32>)
+    ^bb2:  // pred: ^bb0
+      %2 = "test.ti.join_types"(%arg2) : (tensor<2xi32>) -> tensor<2xi32>
+      %3 = relax_type %2 : tensor<2xi32> to tensor<*xi32>
+      br ^bb3(%3 : tensor<*xi32>)
+    ^bb3(%4: tensor<*xi32>):  // 2 preds: ^bb1, ^bb2
+      %5 = specialize_type %4 : tensor<*xi32> to tensor<?xi32>
+      "test.ti.allow_input_type_specialization"(%5) : (tensor<?xi32>) -> ()
+      "test.ti.disallow_input_type_specialization"(%4) : (tensor<*xi32>) -> ()
+      return
+    ```
+    .
+  }];
+  let constructor = "mlir::createTypeInferencePass()";
+}
+
 def ViewOpGraphPass : Pass<"view-op-graph"> {
   let summary = "Print Graphviz visualization of an operation";
   let description = [{

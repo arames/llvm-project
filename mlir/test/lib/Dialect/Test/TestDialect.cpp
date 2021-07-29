@@ -18,6 +18,7 @@
 #include "mlir/IR/DialectImplementation.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/TypeUtilities.h"
+#include "mlir/Interfaces/JoinMeetTypeInterface.h"
 #include "mlir/Reducer/ReductionPatternInterface.h"
 #include "mlir/Transforms/FoldUtils.h"
 #include "mlir/Transforms/InliningUtils.h"
@@ -1099,28 +1100,47 @@ static void print(SingleNoTerminatorCustomAsmOp op, OpAsmPrinter &printer) {
 }
 
 //===----------------------------------------------------------------------===//
-// Control-Flow Edge Operand Types Test Ops
+// Test Type Inferences
 //===----------------------------------------------------------------------===//
 
+LogicalResult TIJoinTypesOp::inferReturnTypes(
+    ::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location,
+    ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes,
+    ::mlir::RegionRange regions,
+    ::llvm::SmallVectorImpl<::mlir::Type> &inferredReturnTypes) {
+  Type resultTy;
+  for (auto operand : operands)
+    resultTy =
+        !resultTy ? operand.getType() : joinTypes(resultTy, operand.getType());
+  inferredReturnTypes.push_back(resultTy);
+  return success();
+}
+
+bool TIJoinTypesOp::isCompatibleReturnTypes(::mlir::TypeRange lhs,
+                                            ::mlir::TypeRange rhs) {
+  return llvm::all_of_zip(lhs, rhs, isMoreSpecializedOrSame) ||
+         llvm::all_of_zip(lhs, rhs, isLessSpecializedOrSame);
+}
+
 Optional<MutableOperandRange>
-CFEBranchOp::getMutableSuccessorOperands(unsigned index) {
+TIBranchOp::getMutableSuccessorOperands(unsigned index) {
   assert(index == 0 && "invalid successor index");
   return getTargetOperandsMutable();
 }
 
-bool CFEBranchOp::areCompatibleControlFlowEdgeOperandTypes(Type operandTy,
-                                                           Type blockArgTy) {
+bool TIBranchOp::areCompatibleControlFlowEdgeOperandTypes(Type operandTy,
+                                                          Type blockArgTy) {
   return isMoreSpecializedOrSame(operandTy, blockArgTy);
 }
 
-static void print(OpAsmPrinter &p, CFERegionIfOp op) { printRegionIfOp(p, op); }
+static void print(OpAsmPrinter &p, TIRegionIfOp op) { printRegionIfOp(p, op); }
 
-OperandRange CFERegionIfOp::getSuccessorEntryOperands(unsigned index) {
+OperandRange TIRegionIfOp::getSuccessorEntryOperands(unsigned index) {
   assert(index < 2 && "invalid region index");
   return getOperands();
 }
 
-void CFERegionIfOp::getSuccessorRegions(
+void TIRegionIfOp::getSuccessorRegions(
     Optional<unsigned> index, ArrayRef<Attribute> operands,
     SmallVectorImpl<RegionSuccessor> &regions) {
   // We always branch to the join region.
@@ -1137,9 +1157,40 @@ void CFERegionIfOp::getSuccessorRegions(
   regions.push_back(RegionSuccessor(&getElseRegion(), getElseArgs()));
 }
 
-bool CFERegionIfOp::areCompatibleControlFlowEdgeOperandTypes(Type operandTy,
-                                                             Type blockArgTy) {
+bool TIRegionIfOp::areCompatibleControlFlowEdgeOperandTypes(Type operandTy,
+                                                            Type blockArgTy) {
   return isMoreSpecializedOrSame(operandTy, blockArgTy);
+}
+
+LogicalResult
+TIDynamicizeOp::inferReturnTypes(MLIRContext *, Optional<Location> location,
+                                 ValueRange operands, DictionaryAttr attributes,
+                                 RegionRange regions,
+                                 SmallVectorImpl<Type> &inferredReturnTypes) {
+  RankedTensorType inputTy = operands[0].getType().dyn_cast<RankedTensorType>();
+  if (!inputTy) {
+    inferredReturnTypes.push_back(operands[0].getType());
+    return success();
+  }
+
+  SmallVector<int64_t> shape(inputTy.getShape().begin(),
+                             inputTy.getShape().end());
+  for (auto &dim : shape) {
+    if (!ShapedType::isDynamic(dim)) {
+      dim = ShapedType::kDynamicSize;
+      break;
+    }
+  }
+
+  inferredReturnTypes.push_back(inputTy.clone(shape));
+
+  return success();
+}
+
+bool TIDynamicizeOp::isCompatibleReturnTypes(::mlir::TypeRange lhs,
+                                             ::mlir::TypeRange rhs) {
+  return llvm::all_of_zip(lhs, rhs, isMoreSpecializedOrSame) ||
+         llvm::all_of_zip(lhs, rhs, isLessSpecializedOrSame);
 }
 
 #include "TestOpEnums.cpp.inc"

@@ -22,6 +22,7 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/TypeUtilities.h"
 #include "mlir/IR/Value.h"
+#include "mlir/Interfaces/JoinMeetTypeInterface.h"
 #include "mlir/Support/MathExtras.h"
 #include "mlir/Transforms/InliningUtils.h"
 #include "llvm/ADT/APFloat.h"
@@ -1649,6 +1650,51 @@ void SwitchOp::getCanonicalizationPatterns(RewritePatternSet &results,
       .add(&simplifyPassThroughSwitch)
       .add(&simplifySwitchFromSwitchOnSameCondition)
       .add(&simplifySwitchFromDefaultSwitchOnSameCondition);
+}
+
+//===----------------------------------------------------------------------===//
+// RelaxTypeOp
+//===----------------------------------------------------------------------===//
+
+OpFoldResult RelaxTypeOp::fold(ArrayRef<Attribute> operands) {
+  return impl::foldCastOp(*this);
+}
+
+static LogicalResult verify(RelaxTypeOp op) {
+  if (!isLessSpecializedOrSame(op.getType(), op.in().getType()))
+    return op.emitOpError(
+        "output type is not less specialized than the input type");
+  return success();
+}
+
+LogicalResult
+RelaxTypeOp::inferReturnTypes(MLIRContext *, Optional<Location> location,
+                              ValueRange operands, DictionaryAttr attributes,
+                              RegionRange regions,
+                              SmallVectorImpl<Type> &inferredReturnTypes) {
+  inferredReturnTypes.push_back(operands[0].getType());
+  return success();
+}
+
+bool RelaxTypeOp::isCompatibleReturnTypes(TypeRange inferredReturnTypes,
+                                          TypeRange resultTypes) {
+  return llvm::all_of_zip(inferredReturnTypes, resultTypes,
+                          isMoreSpecializedOrSame);
+}
+
+//===----------------------------------------------------------------------===//
+// SpecializeTypeOp
+//===----------------------------------------------------------------------===//
+
+OpFoldResult SpecializeTypeOp::fold(ArrayRef<Attribute> operands) {
+  return impl::foldCastOp(*this);
+}
+
+static LogicalResult verify(SpecializeTypeOp op) {
+  if (!isMoreSpecializedOrSame(op.getType(), op.in().getType()))
+    return op.emitOpError(
+        "output type is not more specialized than the input type");
+  return success();
 }
 
 //===----------------------------------------------------------------------===//

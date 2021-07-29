@@ -14,6 +14,7 @@ add_mlir_dialect_library(MLIRStandard
   MLIRCastInterfaces
   MLIRControlFlowInterfaces
   MLIRIR
+  MLIRJoinMeetTypeInterface
   MLIRSideEffectInterfaces
   MLIRVectorInterfaces
   )

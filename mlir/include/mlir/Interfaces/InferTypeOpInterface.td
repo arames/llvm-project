@@ -178,4 +178,45 @@ def ReifyRankedShapedTypeOpInterface :
   ];
 }
 
+def AllowsInputTypesSpecializationInterface :
+    OpInterface<"AllowsInputTypesSpecializationInterface"> {
+  let description = [{
+    Interface to specify what inputs may be specialized.
+  }];
+  let cppNamespace = "::mlir";
+  let methods = [
+    InterfaceMethod<
+      /*desc=*/[{Indicate whether the specified input type may be specialized}],
+      /*retTy=*/"bool",
+      /*methodName=*/"allowsInputTypeSpecialization",
+      /*args=*/(ins "unsigned":$operandIndex),
+      /*methodBody=*/[{}],
+      /*defaultImplementation=*/[{return true;}]
+    >,
+  ];
+}
+
+def AllowsOutputTypesSpecializationInterface :
+    OpInterface<"AllowsOutputTypesSpecializationInterface"> {
+  let description = [{
+    Interface to specify what outputs may be specialized.
+
+    Support for output types specialization is by default conditional on support for
+    `InferTypeOpInterface`.
+    When implemented, this interface allows overriding this default to
+    explicitly specify what outputs may be specialized.
+  }];
+  let cppNamespace = "::mlir";
+  let methods = [
+    InterfaceMethod<
+      /*desc=*/[{Indicate whether the specified output type can be specialized}],
+      /*retTy=*/"bool",
+      /*methodName=*/"allowsOutputTypeSpecialization",
+      /*args=*/(ins "unsigned":$outputIndex),
+      /*methodBody=*/[{}],
+      /*defaultImplementation=*/[{return true;}]
+    >,
+  ];
+}
+
 #endif // MLIR_INFERTYPEOPINTERFACE
