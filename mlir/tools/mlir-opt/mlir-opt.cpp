@@ -78,6 +78,7 @@ void registerTestComposeSubView();
 void registerTestGpuParallelLoopMappingPass();
 void registerTestIRVisitorsPass();
 void registerTestInterfaces();
+void registerTestJoinMeetTypeInterface();
 void registerTestLinalgCodegenStrategy();
 void registerTestLinalgControlFuseByExpansion();
 void registerTestLinalgDistribution();
@@ -168,6 +169,7 @@ void registerTestPasses() {
   mlir::test::registerTestGpuParallelLoopMappingPass();
   mlir::test::registerTestIRVisitorsPass();
   mlir::test::registerTestInterfaces();
+  mlir::test::registerTestJoinMeetTypeInterface();
   mlir::test::registerTestLinalgCodegenStrategy();
   mlir::test::registerTestLinalgControlFuseByExpansion();
   mlir::test::registerTestLinalgDistribution();

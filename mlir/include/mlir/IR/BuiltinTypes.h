@@ -11,6 +11,7 @@
 
 #include "BuiltinAttributeInterfaces.h"
 #include "SubElementInterfaces.h"
+#include "mlir/Interfaces/JoinMeetTypeInterface.h"
 
 namespace llvm {
 struct fltSemantics;

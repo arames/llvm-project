@@ -6,6 +6,7 @@ set(LLVM_OPTIONAL_SOURCES
   DataLayoutInterfaces.cpp
   DerivedAttributeOpInterface.cpp
   InferTypeOpInterface.cpp
+  JoinMeetTypeInterface.cpp
   LoopLikeInterface.cpp
   SideEffectInterfaces.cpp
   TilingInterface.cpp
@@ -36,6 +37,7 @@ add_mlir_interface_library(CopyOpInterface)
 add_mlir_interface_library(DataLayoutInterfaces)
 add_mlir_interface_library(DerivedAttributeOpInterface)
 add_mlir_interface_library(InferTypeOpInterface)
+add_mlir_interface_library(JoinMeetTypeInterface)
 add_mlir_interface_library(LoopLikeInterface)
 add_mlir_interface_library(SideEffectInterfaces)
 add_mlir_interface_library(TilingInterface)

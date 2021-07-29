@@ -34,3 +34,15 @@ add_mlir_doc(DataLayoutInterfaces
   DataLayoutOpInterface
   Interfaces/
   -gen-op-interface-docs)
+
+set(LLVM_TARGET_DEFINITIONS JoinMeetTypeInterface.td)
+mlir_tablegen(JoinMeetTypeInterface.h.inc -gen-type-interface-decls)
+mlir_tablegen(JoinMeetTypeInterface.cpp.inc -gen-type-interface-defs)
+add_public_tablegen_target(MLIRJoinMeetTypeInterfaceIncGen)
+add_dependencies(mlir-generic-headers MLIRJoinMeetTypeInterfaceIncGen)
+
+add_mlir_doc(JoinMeetTypeInterface
+  JoinMeetTypeInterface
+  Interfaces/
+  -gen-type-interface-docs)
+

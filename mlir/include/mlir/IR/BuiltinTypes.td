@@ -17,6 +17,7 @@
 include "mlir/IR/BuiltinDialect.td"
 include "mlir/IR/BuiltinTypeInterfaces.td"
 include "mlir/IR/SubElementInterfaces.td"
+include "mlir/Interfaces/JoinMeetTypeInterface.td"
 
 // TODO: Currently the types defined in this file are prefixed with `Builtin_`.
 // This is to differentiate the types here with the ones in OpBase.td. We should
@@ -266,6 +267,7 @@ def Builtin_Integer : Builtin_Type<"Integer"> {
 //===----------------------------------------------------------------------===//
 
 def Builtin_MemRef : Builtin_Type<"MemRef", [
+    DeclareTypeInterfaceMethods<JoinMeetTypeInterface>,
     DeclareTypeInterfaceMethods<SubElementTypeInterface>
   ], "BaseMemRefType"> {
   let summary = "Shaped reference to a region of memory";
@@ -620,6 +622,7 @@ def Builtin_Opaque : Builtin_Type<"Opaque"> {
 //===----------------------------------------------------------------------===//
 
 def Builtin_RankedTensor : Builtin_Type<"RankedTensor", [
+    DeclareTypeInterfaceMethods<JoinMeetTypeInterface>,
     DeclareTypeInterfaceMethods<SubElementTypeInterface>
   ], "TensorType"> {
   let summary = "Multi-dimensional array with a fixed number of dimensions";
@@ -779,6 +782,7 @@ def Builtin_Tuple : Builtin_Type<"Tuple", [
 //===----------------------------------------------------------------------===//
 
 def Builtin_UnrankedMemRef : Builtin_Type<"UnrankedMemRef", [
+    DeclareTypeInterfaceMethods<JoinMeetTypeInterface>,
     DeclareTypeInterfaceMethods<SubElementTypeInterface>
   ], "BaseMemRefType"> {
   let summary = "Shaped reference, with unknown rank, to a region of memory";
@@ -841,6 +845,7 @@ def Builtin_UnrankedMemRef : Builtin_Type<"UnrankedMemRef", [
 //===----------------------------------------------------------------------===//
 
 def Builtin_UnrankedTensor : Builtin_Type<"UnrankedTensor", [
+    DeclareTypeInterfaceMethods<JoinMeetTypeInterface>,
     DeclareTypeInterfaceMethods<SubElementTypeInterface>
   ], "TensorType"> {
   let summary = "Multi-dimensional array with unknown dimensions";

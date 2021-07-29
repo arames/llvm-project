@@ -46,6 +46,7 @@ add_mlir_library(MLIRIR
   MLIRCallInterfacesIncGen
   MLIRCastInterfacesIncGen
   MLIRDataLayoutInterfacesIncGen
+  MLIRJoinMeetTypeInterfaceIncGen
   MLIROpAsmInterfaceIncGen
   MLIRRegionKindInterfaceIncGen
   MLIRSideEffectInterfacesIncGen

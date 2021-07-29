@@ -66,6 +66,33 @@ LogicalResult verifyCompatibleShapes(TypeRange types);
 
 /// Dimensions are compatible if all non-dynamic dims are equal.
 LogicalResult verifyCompatibleDims(ArrayRef<int64_t> dims);
+
+/// The element-wise `join` function for shapes, and the partial order "less
+/// specialized than or equal". It returns an error if the shapes have different
+/// sizes.
+/// The `join` relationship for two dimensions is:
+///     dim1    | dim2    | join
+///     n       | n       | n
+///     n       | k       | dynamic
+///     dynamic | k       | dynamic
+///     n       | dynamic | dynamic
+FailureOr<SmallVector<int64_t>> joinShapes(ArrayRef<int64_t> shape1,
+                                           ArrayRef<int64_t> shape2,
+                                           Optional<Location> location = None);
+
+/// The element-wise `meet` function for shapes, and the partial order "less
+/// specialized than or equal". It returns an error if the shapes have different
+/// sizes or do not meet.
+/// The `meet` relationship for two dimensions is:
+///     dim1     | dim2    | meet
+///     n        | n       | n
+///     n        | k       | error
+///     dynamic  | k       | k
+///     n        | dynamic | n
+FailureOr<SmallVector<int64_t>> meetShapes(ArrayRef<int64_t> shape1,
+                                           ArrayRef<int64_t> shape2,
+                                           Optional<Location> = None);
+
 //===----------------------------------------------------------------------===//
 // Utility Iterators
 //===----------------------------------------------------------------------===//

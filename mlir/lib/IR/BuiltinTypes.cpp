@@ -15,6 +15,7 @@
 #include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/TensorEncoding.h"
+#include "mlir/IR/TypeUtilities.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/Sequence.h"
@@ -498,6 +499,53 @@ bool TensorType::isValidElementType(Type type) {
          !llvm::isa<BuiltinDialect>(type.getDialect());
 }
 
+static Optional<Type> joinTypes(TensorType ty1, TensorType ty2) {
+  Type elementTy = ty1.getElementType();
+  if (ty2.getElementType() != elementTy)
+    return Type();
+
+  Attribute encoding1;
+  Attribute encoding2;
+  if (auto rankedTy1 = ty1.dyn_cast<RankedTensorType>())
+    encoding1 = rankedTy1.getEncoding();
+  if (auto rankedTy2 = ty2.dyn_cast<RankedTensorType>())
+    encoding2 = rankedTy2.getEncoding();
+  if (encoding1 != encoding2)
+    return Type();
+
+  if (!ty1.hasRank() || !ty2.hasRank() || ty1.getRank() != ty2.getRank())
+    return UnrankedTensorType::get(elementTy);
+
+  auto shape = joinShapes(ty1.getShape(), ty2.getShape()).getValue();
+  return RankedTensorType::get(shape, elementTy, encoding1);
+}
+
+static Optional<Type> meetTypes(TensorType ty1, TensorType ty2) {
+  Type elementTy = ty1.getElementType();
+  if (ty2.getElementType() != elementTy)
+    return Type();
+
+  Attribute encoding1;
+  Attribute encoding2;
+  if (auto rankedTy1 = ty1.dyn_cast<RankedTensorType>())
+    encoding1 = rankedTy1.getEncoding();
+  if (auto rankedTy2 = ty2.dyn_cast<RankedTensorType>())
+    encoding2 = rankedTy2.getEncoding();
+  if (encoding1 != encoding2)
+    return Type();
+
+  if (!ty1.hasRank() || !ty2.hasRank())
+    return ty1.hasRank() ? ty1 : ty2;
+
+  if (ty1.getRank() != ty2.getRank())
+    return Type();
+
+  auto shape = meetShapes(ty1.getShape(), ty2.getShape());
+  if (succeeded(shape))
+    return RankedTensorType::get(shape.getValue(), elementTy, encoding1);
+  return Type();
+}
+
 //===----------------------------------------------------------------------===//
 // RankedTensorType
 //===----------------------------------------------------------------------===//
@@ -523,6 +571,18 @@ void RankedTensorType::walkImmediateSubElements(
     walkAttrsFn(encoding);
 }
 
+Optional<Type> RankedTensorType::join(Type other) const {
+  if (!other.isa<TensorType>())
+    return None;
+  return ::joinTypes(*this, other.cast<TensorType>());
+}
+
+Optional<Type> RankedTensorType::meet(Type other) const {
+  if (!other.isa<TensorType>())
+    return None;
+  return ::meetTypes(*this, other.cast<TensorType>());
+}
+
 //===----------------------------------------------------------------------===//
 // UnrankedTensorType
 //===----------------------------------------------------------------------===//
@@ -539,6 +599,18 @@ void UnrankedTensorType::walkImmediateSubElements(
   walkTypesFn(getElementType());
 }
 
+Optional<Type> UnrankedTensorType::join(Type other) const {
+  if (!other.isa<TensorType>())
+    return None;
+  return ::joinTypes(*this, other.cast<TensorType>());
+}
+
+Optional<Type> UnrankedTensorType::meet(Type other) const {
+  if (!other.isa<TensorType>())
+    return None;
+  return ::meetTypes(*this, other.cast<TensorType>());
+}
+
 //===----------------------------------------------------------------------===//
 // BaseMemRefType
 //===----------------------------------------------------------------------===//
@@ -553,6 +625,53 @@ unsigned BaseMemRefType::getMemorySpaceAsInt() const {
   if (auto rankedMemRefTy = dyn_cast<MemRefType>())
     return rankedMemRefTy.getMemorySpaceAsInt();
   return cast<UnrankedMemRefType>().getMemorySpaceAsInt();
+}
+
+static LogicalResult commonMemRefJoinMeetChecks(BaseMemRefType ty1,
+                                                BaseMemRefType ty2) {
+  if (ty1.getElementType() != ty2.getElementType())
+    return failure();
+
+  if (ty1.getMemorySpace() != ty2.getMemorySpace())
+    return failure();
+
+  auto memRefTy1 = ty1.dyn_cast<MemRefType>();
+  auto memRefTy2 = ty2.dyn_cast<MemRefType>();
+  if (memRefTy1 && memRefTy2 && memRefTy1.getLayout() != memRefTy2.getLayout())
+    return failure();
+
+  return success();
+}
+
+static Optional<Type> joinTypes(BaseMemRefType ty1, BaseMemRefType ty2) {
+  if (failed(commonMemRefJoinMeetChecks(ty1, ty2)))
+    return Type();
+
+  if (!ty1.hasRank() || !ty2.hasRank() || ty1.getRank() != ty2.getRank())
+    return UnrankedMemRefType::get(ty1.getElementType(), ty1.getMemorySpace());
+
+  auto shape = joinShapes(ty1.getShape(), ty2.getShape()).getValue();
+  return MemRefType::get(shape, ty1.getElementType(),
+                         ty1.cast<MemRefType>().getLayout(),
+                         ty1.getMemorySpace());
+}
+
+static Optional<Type> meetTypes(BaseMemRefType ty1, BaseMemRefType ty2) {
+  if (failed(commonMemRefJoinMeetChecks(ty1, ty2)))
+    return Type();
+
+  if (!ty1.hasRank() || !ty2.hasRank())
+    return ty1.hasRank() ? ty1 : ty2;
+
+  if (ty1.getRank() != ty2.getRank())
+    return Type();
+
+  auto shape = meetShapes(ty1.getShape(), ty2.getShape());
+  if (succeeded(shape))
+    return MemRefType::get(shape.getValue(), ty1.getElementType(),
+                           ty1.cast<MemRefType>().getLayout(),
+                           ty1.getMemorySpace());
+  return Type();
 }
 
 //===----------------------------------------------------------------------===//
@@ -786,6 +905,18 @@ void MemRefType::walkImmediateSubElements(
   walkAttrsFn(getMemorySpace());
 }
 
+Optional<Type> MemRefType::join(Type other) const {
+  if (!other.isa<BaseMemRefType>())
+    return None;
+  return ::joinTypes(*this, other.cast<BaseMemRefType>());
+}
+
+Optional<Type> MemRefType::meet(Type other) const {
+  if (!other.isa<BaseMemRefType>())
+    return None;
+  return ::meetTypes(*this, other.cast<BaseMemRefType>());
+}
+
 //===----------------------------------------------------------------------===//
 // UnrankedMemRefType
 //===----------------------------------------------------------------------===//
@@ -950,6 +1081,18 @@ void UnrankedMemRefType::walkImmediateSubElements(
     function_ref<void(Type)> walkTypesFn) const {
   walkTypesFn(getElementType());
   walkAttrsFn(getMemorySpace());
+}
+
+Optional<Type> UnrankedMemRefType::join(Type other) const {
+  if (!other.isa<BaseMemRefType>())
+    return None;
+  return ::joinTypes(*this, other.cast<BaseMemRefType>());
+}
+
+Optional<Type> UnrankedMemRefType::meet(Type other) const {
+  if (!other.isa<BaseMemRefType>())
+    return None;
+  return ::meetTypes(*this, other.cast<BaseMemRefType>());
 }
 
 //===----------------------------------------------------------------------===//

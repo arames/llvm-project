@@ -125,38 +125,6 @@ bool CastOp::areCastCompatible(TypeRange inputs, TypeRange outputs) {
   return succeeded(verifyCompatibleShape(aT, bT));
 }
 
-/// Compute a TensorType that has the joined shape knowledge of the two
-/// given TensorTypes. The element types need to match.
-static TensorType joinShapes(TensorType one, TensorType two) {
-  assert(one.getElementType() == two.getElementType());
-
-  if (!one.hasRank())
-    return two;
-  if (!two.hasRank())
-    return one;
-
-  int64_t rank = one.getRank();
-  if (rank != two.getRank())
-    return {};
-
-  SmallVector<int64_t, 4> join;
-  join.reserve(rank);
-  for (int64_t i = 0; i < rank; ++i) {
-    if (one.isDynamicDim(i)) {
-      join.push_back(two.getDimSize(i));
-      continue;
-    }
-    if (two.isDynamicDim(i)) {
-      join.push_back(one.getDimSize(i));
-      continue;
-    }
-    if (one.getDimSize(i) != two.getDimSize(i))
-      return {};
-    join.push_back(one.getDimSize(i));
-  }
-  return RankedTensorType::get(join, one.getElementType());
-}
-
 namespace {
 
 /// Replaces chains of two tensor.cast operations by a single tensor.cast
@@ -176,20 +144,20 @@ struct ChainedTensorCast : public OpRewritePattern<CastOp> {
     auto intermediateType = tensorCastOperand.getType().cast<TensorType>();
     auto resultType = tensorCast.getType().cast<TensorType>();
 
-    // We can remove the intermediate cast if joining all three produces the
-    // same result as just joining the source and result shapes.
-    auto firstJoin =
-        joinShapes(joinShapes(sourceType, intermediateType), resultType);
+    // We can remove the intermediate cast if meeting all three produces the
+    // same result as just meeting the source and result shapes.
+    auto firstMeet =
+        meetTypes(meetTypes(sourceType, intermediateType), resultType);
 
-    // The join might not exist if the cast sequence would fail at runtime.
-    if (!firstJoin)
+    // The meet might not exist if the cast sequence would fail at runtime.
+    if (!firstMeet)
       return failure();
 
-    // The newJoin always exists if the above join exists, it might just contain
+    // The newMeet always exists if the above meet exists, it might just contain
     // less information. If so, we cannot drop the intermediate cast, as doing
     // so would remove runtime checks.
-    auto newJoin = joinShapes(sourceType, resultType);
-    if (firstJoin != newJoin)
+    auto newMeet = meetTypes(sourceType, resultType);
+    if (firstMeet != newMeet)
       return failure();
 
     rewriter.replaceOpWithNewOp<CastOp>(tensorCast, resultType,

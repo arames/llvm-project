@@ -18,6 +18,7 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Types.h"
 #include "mlir/IR/Value.h"
+#include "mlir/Interfaces/JoinMeetTypeInterface.h"
 
 using namespace mlir;
 
@@ -149,6 +150,44 @@ LogicalResult mlir::verifyCompatibleShapes(TypeRange types) {
   }
 
   return success();
+}
+
+FailureOr<SmallVector<int64_t>> mlir::joinShapes(ArrayRef<int64_t> shape1,
+                                                 ArrayRef<int64_t> shape2,
+                                                 Optional<Location> location) {
+  if (shape1.size() != shape2.size())
+    return emitOptionalError(location, "shapes' sizes differ");
+
+  SmallVector<int64_t> shape(shape1.size());
+  for (size_t i = 0, e = shape1.size(); i != e; ++i) {
+    int64_t dim1 = shape1[i];
+    int64_t dim2 = shape2[i];
+    shape[i] = dim1 == dim2 ? dim1 : ShapedType::kDynamicSize;
+  }
+
+  return shape;
+}
+
+FailureOr<SmallVector<int64_t>> mlir::meetShapes(ArrayRef<int64_t> shape1,
+                                                 ArrayRef<int64_t> shape2,
+                                                 Optional<Location> location) {
+  if (shape1.size() != shape2.size())
+    return emitOptionalError(location, "shapes' sizes differ");
+
+  SmallVector<int64_t> shape(shape1.size());
+  for (size_t i = 0, e = shape1.size(); i != e; ++i) {
+    int64_t dim1 = shape1[i];
+    int64_t dim2 = shape2[i];
+    if (dim1 == dim2 || ShapedType::isDynamic(dim1) ||
+        ShapedType::isDynamic(dim2)) {
+      shape[i] = ShapedType::isDynamic(dim1) ? dim2 : dim1;
+    } else {
+      return emitOptionalError(location, "dimensions at index ", i,
+                               " are incompatible: ", dim1, ", ", dim2);
+    }
+  }
+
+  return shape;
 }
 
 OperandElementTypeIterator::OperandElementTypeIterator(
