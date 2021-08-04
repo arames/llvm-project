@@ -262,6 +262,20 @@ void MD5::final(MD5Result &Result) {
   support::endian::write32le(&Result[12], d);
 }
 
+/// Finish and return the hash as a pair of words.
+std::pair<uint64_t, uint64_t> MD5::finalWords() {
+  MD5Result Result;
+  final(Result);
+  return Result.words();
+}
+
+/// Finish and return the hash as a hex string of length 32.
+SmallString<32> MD5::final() {
+  MD5Result Result;
+  final(Result);
+  return Result.digest();
+}
+
 SmallString<32> MD5::MD5Result::digest() const {
   SmallString<32> Str;
   raw_svector_ostream Res(Str);

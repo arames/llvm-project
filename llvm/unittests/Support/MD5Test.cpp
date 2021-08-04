@@ -68,4 +68,22 @@ TEST(MD5HashTest, MD5) {
   EXPECT_EQ(0x3be167ca6c49fb7dULL, MD5Res.high());
   EXPECT_EQ(0x00e49261d7d3fcc3ULL, MD5Res.low());
 }
+
+TEST(MD5Test, FinalHelpers) {
+  {
+    MD5 Hash;
+    Hash.update("abcd");
+    SmallString<32> Result = Hash.final();
+    const char *Expected = "e2fc714c4727ee9395f324cd2e7f331f";
+    EXPECT_EQ(Result, Expected);
+  }
+  {
+    MD5 Hash;
+    Hash.update("abcd");
+    std::pair<uint64_t, uint64_t> Result = Hash.finalWords();
+    auto Expected = std::make_pair<uint64_t, uint64_t>(2248280477974983573ULL,
+                                                       10659500555211242722ULL);
+    EXPECT_EQ(Result, Expected);
+  }
 }
+} // namespace

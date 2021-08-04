@@ -90,6 +90,12 @@ public:
   /// Finishes off the hash and puts the result in result.
   void final(MD5Result &Result);
 
+  /// Finishes the hash, and returns the result as a pair of words.
+  std::pair<uint64_t, uint64_t> finalWords();
+
+  /// Finishes the hash, and returns the result as a hex string of length 32.
+  SmallString<32> final();
+
   /// Translates the bytes in \p Res to a hex string that is
   /// deposited into \p Str. The result will be of length 32.
   static void stringifyResult(MD5Result &Result, SmallString<32> &Str);
