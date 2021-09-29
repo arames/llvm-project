@@ -62,7 +62,8 @@ detail::verifyBranchSuccessorOperands(Operation *op, unsigned succNo,
   // Check the types.
   auto operandIt = operands->begin();
   for (unsigned i = 0; i != operandCount; ++i, ++operandIt) {
-    if ((*operandIt).getType() != destBB->getArgument(i).getType())
+    if (!cast<BranchOpInterface>(op).areCompatibleControlFlowEdgeOperandTypes(
+            (*operandIt).getType(), destBB->getArgument(i).getType()))
       return op->emitError() << "type mismatch for bb argument #" << i
                              << " of successor #" << succNo;
   }
@@ -135,7 +136,8 @@ verifyTypesAlongAllEdges(Operation *op, Optional<unsigned> sourceNo,
          llvm::enumerate(llvm::zip(*sourceTypes, succInputsTypes))) {
       Type sourceType = std::get<0>(typesIdx.value());
       Type inputType = std::get<1>(typesIdx.value());
-      if (sourceType != inputType) {
+      if (!regionInterface.areCompatibleControlFlowEdgeOperandTypes(
+              sourceType, inputType)) {
         InFlightDiagnostic diag = op->emitOpError(" along control flow edge ");
         return printEdgeName(diag)
                << ": source type #" << typesIdx.index() << " " << sourceType

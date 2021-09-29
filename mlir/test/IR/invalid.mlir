@@ -370,31 +370,6 @@ func @argError() {
 
 // -----
 
-func @br_mismatch() {
-^bb0:
-  %0:2 = "foo"() : () -> (i1, i17)
-  // expected-error @+1 {{branch has 2 operands for successor #0, but target block has 1}}
-  br ^bb1(%0#1, %0#0 : i17, i1)
-
-^bb1(%x: i17):
-  return
-}
-
-// -----
-
-func @succ_arg_type_mismatch() {
-^bb0:
-  %0 = "getBool"() : () -> i1
-  // expected-error @+1 {{type mismatch for bb argument #0 of successor #0}}
-  br ^bb1(%0 : i1)
-
-^bb1(%x: i32):
-  return
-}
-
-
-// -----
-
 // Test no nested vector.
 func @vectors(vector<1 x vector<1xi32>>, vector<2x4xf32>)
 // expected-error@-1 {{vector elements must be int/index/float type}}

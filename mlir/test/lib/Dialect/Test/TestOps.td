@@ -2161,6 +2161,8 @@ def RegionIfOp : TEST_Op<"region_if",
     }
     ::mlir::OperandRange getSuccessorEntryOperands(unsigned index);
   }];
+
+  let verifier = [{ return RegionBranchOpInterface::verifyTypes(*this); }];
 }
 
 //===----------------------------------------------------------------------===//
@@ -2358,5 +2360,60 @@ def TestDefaultStrAttrHasValueOp : TEST_Op<"has_str_value"> {
 
 def : Pat<(TestDefaultStrAttrNoValueOp $value),
           (TestDefaultStrAttrHasValueOp ConstantStrAttr<StrAttr, "foo">)>;
+
+//===----------------------------------------------------------------------===//
+// Test Control-Flow Edge Operand Types
+//===----------------------------------------------------------------------===//
+
+def CFEBranchOp : TEST_Op<"cfe.br",
+    [DeclareOpInterfaceMethods<BranchOpInterface,
+                               ["areCompatibleControlFlowEdgeOperandTypes"]>,
+     Terminator]> {
+  let arguments = (ins Variadic<AnyType>:$targetOperands);
+  let successors = (successor AnySuccessor:$target);
+}
+
+def CFERegionIfYieldOp : TEST_Op<"cfe.region_if_yield",
+      [NoSideEffect, ReturnLike, Terminator]> {
+  let arguments = (ins Variadic<AnyType>:$results);
+  let assemblyFormat = [{
+    $results `:` type($results) attr-dict
+  }];
+}
+
+def CFERegionIfOp
+    : TEST_Op<"cfe.region_if",
+      [DeclareOpInterfaceMethods<RegionBranchOpInterface,
+                                 ["areCompatibleControlFlowEdgeOperandTypes"]>,
+       SingleBlockImplicitTerminator<"CFERegionIfYieldOp">,
+       RecursiveSideEffects]> {
+  let description =[{
+    Represents an abstract if-then-else-join pattern. In this context, the then
+    and else regions jump to the join region, which finally returns to its
+    parent op.
+    }];
+
+  let printer = [{ return ::print(p, *this); }];
+  let parser = [{ return ::parseRegionIfOp(parser, result); }];
+  let arguments = (ins Variadic<AnyType>);
+  let results = (outs Variadic<AnyType>:$results);
+  let regions = (region SizedRegion<1>:$thenRegion,
+                        AnyRegion:$elseRegion,
+                        AnyRegion:$joinRegion);
+  let extraClassDeclaration = [{
+    ::mlir::Block::BlockArgListType getThenArgs() {
+      return getBody(0)->getArguments();
+    }
+    ::mlir::Block::BlockArgListType getElseArgs() {
+      return getBody(1)->getArguments();
+    }
+    ::mlir::Block::BlockArgListType getJoinArgs() {
+      return getBody(2)->getArguments();
+    }
+    ::mlir::OperandRange getSuccessorEntryOperands(unsigned index);
+  }];
+
+  let verifier = [{ return RegionBranchOpInterface::verifyTypes(*this); }];
+}
 
 #endif // TEST_OPS

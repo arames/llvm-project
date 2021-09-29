@@ -73,7 +73,15 @@ def BranchOpInterface : OpInterface<"BranchOpInterface"> {
       "::mlir::Block *", "getSuccessorForOperands",
       (ins "::mlir::ArrayRef<::mlir::Attribute>":$operands), [{}],
       /*defaultImplementation=*/[{ return nullptr; }]
-    >
+    >,
+    StaticInterfaceMethod<
+      /*desc=*/"Specify type constraints over control-flow edges.",
+      /*retTy=*/"bool",
+      /*methodName=*/"areCompatibleControlFlowEdgeOperandTypes",
+      /*args=*/(ins "::mlir::Type":$operandTy, "::mlir::Type":$blockArgTy),
+      /*methodBody=*/[{}],
+      /*defaultImplementation=*/"return operandTy == blockArgTy;"
+      >
   ];
 
   let verify = [{
@@ -149,7 +157,15 @@ def RegionBranchOpInterface : OpInterface<"RegionBranchOpInterface"> {
         assert(countPerRegion.empty());
         countPerRegion.resize(numRegions, kUnknownNumRegionInvocations);
       }]
-    >
+    >,
+    StaticInterfaceMethod<
+      /*desc=*/"Specify type constraints over control-flow edges.",
+      /*retTy=*/"bool",
+      /*methodName=*/"areCompatibleControlFlowEdgeOperandTypes",
+      /*args=*/(ins "::mlir::Type":$operandTy, "::mlir::Type":$blockArgTy),
+      /*methodBody=*/[{}],
+      /*defaultImplementation=*/"return operandTy == blockArgTy;"
+      >
   ];
 
   let verify = [{

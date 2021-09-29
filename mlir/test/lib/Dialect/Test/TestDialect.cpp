@@ -1008,7 +1008,8 @@ void StringAttrPrettyNameOp::getAsmResultNames(
 // RegionIfOp
 //===----------------------------------------------------------------------===//
 
-static void print(OpAsmPrinter &p, RegionIfOp op) {
+template <typename RegionIfOpT>
+static void printRegionIfOp(OpAsmPrinter &p, RegionIfOpT op) {
   p << " ";
   p.printOperands(op.getOperands());
   p << ": " << op.getOperandTypes();
@@ -1026,6 +1027,8 @@ static void print(OpAsmPrinter &p, RegionIfOp op) {
                 /*printEntryBlockArgs=*/true,
                 /*printBlockTerminators=*/true);
 }
+
+static void print(OpAsmPrinter &p, RegionIfOp op) { printRegionIfOp(p, op); }
 
 static ParseResult parseRegionIfOp(OpAsmParser &parser,
                                    OperationState &result) {
@@ -1093,6 +1096,50 @@ static void print(SingleNoTerminatorCustomAsmOp op, OpAsmPrinter &printer) {
       // This op has a single block without terminators. But explicitly mark
       // as not printing block terminators for testing.
       /*printBlockTerminators=*/false);
+}
+
+//===----------------------------------------------------------------------===//
+// Control-Flow Edge Operand Types Test Ops
+//===----------------------------------------------------------------------===//
+
+Optional<MutableOperandRange>
+CFEBranchOp::getMutableSuccessorOperands(unsigned index) {
+  assert(index == 0 && "invalid successor index");
+  return getTargetOperandsMutable();
+}
+
+bool CFEBranchOp::areCompatibleControlFlowEdgeOperandTypes(Type operandTy,
+                                                           Type blockArgTy) {
+  return isMoreSpecializedOrSame(operandTy, blockArgTy);
+}
+
+static void print(OpAsmPrinter &p, CFERegionIfOp op) { printRegionIfOp(p, op); }
+
+OperandRange CFERegionIfOp::getSuccessorEntryOperands(unsigned index) {
+  assert(index < 2 && "invalid region index");
+  return getOperands();
+}
+
+void CFERegionIfOp::getSuccessorRegions(
+    Optional<unsigned> index, ArrayRef<Attribute> operands,
+    SmallVectorImpl<RegionSuccessor> &regions) {
+  // We always branch to the join region.
+  if (index.hasValue()) {
+    if (index.getValue() < 2)
+      regions.push_back(RegionSuccessor(&getJoinRegion(), getJoinArgs()));
+    else
+      regions.push_back(RegionSuccessor(getResults()));
+    return;
+  }
+
+  // The then and else regions are the entry regions of this op.
+  regions.push_back(RegionSuccessor(&getThenRegion(), getThenArgs()));
+  regions.push_back(RegionSuccessor(&getElseRegion(), getElseArgs()));
+}
+
+bool CFERegionIfOp::areCompatibleControlFlowEdgeOperandTypes(Type operandTy,
+                                                             Type blockArgTy) {
+  return isMoreSpecializedOrSame(operandTy, blockArgTy);
 }
 
 #include "TestOpEnums.cpp.inc"
